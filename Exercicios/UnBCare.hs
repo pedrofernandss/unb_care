@@ -102,8 +102,24 @@ consultarMedicamento = undefined
 
 -}
 
+calcularDemanda :: Receituario -> EstoqueMedicamentos
+calcularDemanda [] = []
+calcularDemanda ((medicamento, horarios):listTail) =
+    (medicamento, length horarios) : calcularDemanda listTail
+
+ordenaAlfabeticamente :: EstoqueMedicamentos -> EstoqueMedicamentos
+ordenaAlfabeticamente [] = []
+ordenaAlfabeticamente (prescricaoAtual:restoLista) =
+    inserirMedicamento (ordenaAlfabeticamente restoLista) prescricaoAtual
+  where
+    inserirMedicamento :: EstoqueMedicamentos -> (Medicamento, Quantidade) -> EstoqueMedicamentos
+    inserirMedicamento [] prescricaoAtual = [prescricaoAtual]
+    inserirMedicamento (primeiraPrescricaoLista:restoLista) prescricaoAtual
+        | fst prescricaoAtual <= fst primeiraPrescricaoLista = prescricaoAtual : (primeiraPrescricaoLista:restoLista)
+        | otherwise = primeiraPrescricaoLista : inserirMedicamento restoLista prescricaoAtual
+
 demandaMedicamentos :: Receituario -> EstoqueMedicamentos
-demandaMedicamentos = undefined
+demandaMedicamentos receituario = ordenaAlfabeticamente (calcularDemanda receituario)
 
 {-
    QUESTÃO 5  VALOR: 1,0 ponto, sendo 0,5 para cada função.
