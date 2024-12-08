@@ -36,12 +36,6 @@ atualizaEstoque medicamento quantidade [] = []
 atualizaEstoque medicamento quantidade ((medicamentoDisponivel, quantidadeDisponivel):listTail)
         | medicamento == medicamentoDisponivel = (medicamento, quantidadeDisponivel + quantidade) : listTail
         | otherwise = (medicamentoDisponivel, quantidadeDisponivel) : atualizaEstoque medicamento quantidade listTail
-        
-encontraQuantidadeMedicamento :: Medicamento -> EstoqueMedicamentos -> Int
-encontraQuantidadeMedicamento medicamento [] = 0
-encontraQuantidadeMedicamento medicamento ((medicamentoDisponivel, quantidadeDisponivel):listTail)
-        | medicamento == medicamentoDisponivel = quantidadeDisponivel
-        | otherwise = encontraQuantidadeMedicamento medicamento listTail
 
 {-
 
@@ -75,7 +69,7 @@ tomarMedicamento medicamento estoque
         | quantidadeMedicamento == 0 = Nothing
         | otherwise = Just (atualizaEstoque medicamento (-1) estoque)
         where
-    quantidadeMedicamento = encontraQuantidadeMedicamento medicamento estoque
+    quantidadeMedicamento = consultarMedicamento medicamento estoque
 
 {-
    QUESTÃO 3  VALOR: 1,0 ponto
@@ -87,7 +81,10 @@ Se o medicamento não existir, retorne 0.
 -}
 
 consultarMedicamento :: Medicamento -> EstoqueMedicamentos -> Quantidade
-consultarMedicamento = undefined
+consultarMedicamento medicamento [] = 0
+consultarMedicamento medicamento ((medicamentoDisponivel, quantidadeDisponivel):listTail)
+        | medicamento == medicamentoDisponivel = quantidadeDisponivel
+        | otherwise = consultarMedicamento medicamento listTail
 
 {-
    QUESTÃO 4  VALOR: 1,0 ponto
@@ -121,6 +118,7 @@ ordenaAlfabeticamente (prescricaoAtual:restoLista) =
 demandaMedicamentos :: Receituario -> EstoqueMedicamentos
 demandaMedicamentos receituario = ordenaAlfabeticamente (calcularDemanda receituario)
 
+
 {-
    QUESTÃO 5  VALOR: 1,0 ponto, sendo 0,5 para cada função.
 
@@ -134,11 +132,26 @@ demandaMedicamentos receituario = ordenaAlfabeticamente (calcularDemanda receitu
 
  -}
 
+verificaUnicidadeOrdem :: Ord a => [a] -> Bool
+verificaUnicidadeOrdem [] = True
+verificaUnicidadeOrdem [_] = True
+verificaUnicidadeOrdem (primeiroElementoLista:segundoElementoLista:restoLista) 
+        | primeiroElementoLista < segundoElementoLista = verificaUnicidadeOrdem (segundoElementoLista:restoLista)
+        | otherwise = False  
+
+
 receituarioValido :: Receituario -> Bool
-receituarioValido = undefined
+receituarioValido receituario = medicamentosOrdenadosEValidos && horariosOrdenadosEValidos
+        where
+                medicamentosOrdenadosEValidos = verificaUnicidadeOrdem (map fst receituario)
+                horariosOrdenadosEValidos = all verificaUnicidadeOrdem (map snd receituario)
+
 
 planoValido :: PlanoMedicamento -> Bool
-planoValido = undefined
+planoValido planoMedicamento = horariosOrdenadosEValidos && medicamentosOrdenadosEValidos
+        where 
+                horariosOrdenadosEValidos = verificaUnicidadeOrdem (map fst planoMedicamento)
+                medicamentosOrdenadosEValidos = all verificaUnicidadeOrdem (map snd planoMedicamento)
 
 {-
 
@@ -154,8 +167,36 @@ planoValido = undefined
 
  -}
 
+
+listaCompras :: [Cuidado] -> [Medicamento]
+listaCompras [] = []
+listaCompras (Comprar medicamento _ : restoLista) = medicamento : listaCompras restoLista
+listaCompras (_ : restoLista) = listaCompras restoLista
+
+listaMedicar :: [Cuidado] -> [Medicamento]
+listaMedicar [] = []
+listaMedicar (Medicar medicamento : restoLista) = medicamento : listaMedicar restoLista
+listaMedicar (_ : restoLista) = listaMedicar restoLista
+
+verificaConflitoComprarMedicar :: [Cuidado] -> Bool
+verificaConflitoComprarMedicar listaCuidados = existeConflito (listaCompras listaCuidados) (listaMedicar listaCuidados)
+        where
+            existeConflito [] _ = False
+            existeConflito (atual:restoLista) listaMedicamentos
+                | pertence atual listaMedicamentos = True
+                | otherwise = existeConflito restoLista listaMedicamentos
+            pertence _ [] = False
+            pertence elemento (atual:restoLista)
+                | elemento == atual = True
+                | otherwise = pertence elemento restoLista
+
+verificaOrdenacaoMedicar :: [Cuidado] -> Bool
+verificaOrdenacaoMedicar listaCuidados = verificaUnicidadeOrdem (listaMedicar listaCuidados)
+
 plantaoValido :: Plantao -> Bool
-plantaoValido = undefined
+plantaoValido [] = True
+plantaoValido ((horario, cuidados) : restoLista) = verificaUnicidadeOrdem (map fst ((horario, cuidados) : restoLista)) && not (verificaConflitoComprarMedicar cuidados) && verificaOrdenacaoMedicar cuidados && plantaoValido restoLista
+
 
 {-
    QUESTÃO 7  VALOR: 1,0 ponto
