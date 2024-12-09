@@ -336,4 +336,24 @@ QUESTÃO 11 VALOR: 1,0 ponto
 -}
 
 plantaoCorreto :: PlanoMedicamento -> EstoqueMedicamentos -> Plantao
-plantaoCorreto = undefined
+plantaoCorreto plano estoque = reverse (processaPlano plano estoque [])
+
+processaPlano :: PlanoMedicamento -> EstoqueMedicamentos -> Plantao -> Plantao
+processaPlano [] _ plantao = plantao
+processaPlano ((horario, meds):restoPlano) estoque plantao =
+  let (cuidados, novoEstoque) = processaMedicamentos meds estoque
+      novoPlantao = (horario, cuidados) : plantao
+  in processaPlano restoPlano novoEstoque novoPlantao
+
+processaMedicamentos :: [Medicamento] -> EstoqueMedicamentos -> ([Cuidado], EstoqueMedicamentos)
+processaMedicamentos meds estoque = foldl processaMedicamento ([], estoque) meds
+
+processaMedicamento :: ([Cuidado], EstoqueMedicamentos) -> Medicamento -> ([Cuidado], EstoqueMedicamentos)
+processaMedicamento (cuidados, estoque) med =
+  case lookup med estoque of
+    Just qtd | qtd > 0 ->
+      let novoEstoque = atualizaEstoque med (-1) estoque
+      in (cuidados ++ [Medicar med], novoEstoque)
+    _ ->
+      let novoEstoque = atualizaEstoque med 1 estoque
+      in (cuidados ++ [Comprar med 1, Medicar med], novoEstoque)
