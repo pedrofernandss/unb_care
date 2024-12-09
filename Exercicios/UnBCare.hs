@@ -309,8 +309,19 @@ juntamente com ministrar medicamento.
 
 -}
 
-satisfaz :: Plantao -> EstoqueMedicamentos -> PlanoMedicamento -> Bool
-satisfaz = undefined
+satisfaz :: Plantao -> PlanoMedicamento -> EstoqueMedicamentos -> Bool
+satisfaz plantao plano estoque = verificaPlano plantao plano estoque
+
+verificaPlano :: Plantao -> PlanoMedicamento -> EstoqueMedicamentos -> Bool
+verificaPlano [] [] estoque = all (\(_, qtd) -> qtd >= 0) estoque
+verificaPlano ((horarioP, cuidados):restoPlantao) ((horarioM, meds):restoPlano) estoque
+  | horarioP == horarioM = verificaPlano restoPlantao restoPlano (executaCuidados cuidados estoque)
+  | otherwise = False
+
+executaCuidados :: [Cuidado] -> EstoqueMedicamentos -> EstoqueMedicamentos
+executaCuidados [] estoque = estoque
+executaCuidados ((Comprar med qtd):restoCuidados) estoque = executaCuidados restoCuidados (atualizaEstoque med qtd estoque)
+executaCuidados ((Medicar med):restoCuidados) estoque = executaCuidados restoCuidados (atualizaEstoque med (-1) estoque)
 
 
 
