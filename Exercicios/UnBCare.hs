@@ -210,7 +210,26 @@ plantaoValido ((horario, cuidados) : restoLista) = verificaUnicidadeOrdem (map f
 -}
 
 geraPlanoReceituario :: Receituario -> PlanoMedicamento
-geraPlanoReceituario = undefined
+geraPlanoReceituario [] = []
+geraPlanoReceituario ((medicamento, horarios):restoReceituario) =
+    ordenaPlano (adicionaMedicamentos horarios medicamento (geraPlanoReceituario restoReceituario))
+  where
+    adicionaMedicamentos [] _ plano = plano
+    adicionaMedicamentos (horario:restoHorarios) medicamento [] =
+        (horario, [medicamento]) : adicionaMedicamentos restoHorarios medicamento []
+    adicionaMedicamentos (horario:restoHorarios) medicamento ((h, meds):restoPlano)
+        | horario == h = (h, medicamento : meds) : adicionaMedicamentos restoHorarios medicamento restoPlano
+        | otherwise = (h, meds) : adicionaMedicamentos (horario : restoHorarios) medicamento restoPlano
+
+    ordenaPlano [] = []
+    ordenaPlano (x:xs) = insereOrdenado x (ordenaPlano xs)
+
+    insereOrdenado elem [] = [elem]
+    insereOrdenado (horario, meds) ((h, medsList):restoOrdenado)
+        | horario <= h = (horario, meds) : (h, medsList) : restoOrdenado
+        | otherwise = (h, medsList) : insereOrdenado (horario, meds) restoOrdenado
+
+
 
 {- QUESTÃO 8  VALOR: 1,0 ponto
 
@@ -223,7 +242,23 @@ geraPlanoReceituario = undefined
 -}
 
 geraReceituarioPlano :: PlanoMedicamento -> Receituario
-geraReceituarioPlano = undefined
+geraReceituarioPlano [] = []
+geraReceituarioPlano plano =
+    [(medicamento, ordenar [horario | (horario, medicamentos) <- plano, medicamento `elem` medicamentos])
+    | medicamento <- ordenar (removerDuplicatas (extrairMedicamentos plano))]
+  where
+    extrairMedicamentos [] = []
+    extrairMedicamentos ((_, medicamentos) : restoLista) = medicamentos ++ extrairMedicamentos restoLista
+
+    removerDuplicatas [] = []
+    removerDuplicatas (elementoAtual:proximosElementos)
+        | elementoAtual `elem` proximosElementos = removerDuplicatas proximosElementos
+        | otherwise = elementoAtual : removerDuplicatas proximosElementos
+
+    ordenar [] = []
+    ordenar (elementoAtual:proximosElementos) = ordenar [y | y <- proximosElementos, y <= elementoAtual] ++ [elementoAtual] ++ ordenar [y | y <- proximosElementos, y > elementoAtual]
+
+
 
 {-  QUESTÃO 9 VALOR: 1,0 ponto
 
@@ -235,7 +270,32 @@ deve ser Just v, onde v é o valor final do estoque de medicamentos
 -}
 
 executaPlantao :: Plantao -> EstoqueMedicamentos -> Maybe EstoqueMedicamentos
-executaPlantao = undefined
+executaPlantao [] estoque = Just estoque
+executaPlantao ((_, cuidados) : restoPlantao) estoque =
+    executaCuidados cuidados estoque >>= \estoqueAtualizado ->
+        executaPlantao restoPlantao estoqueAtualizado
+  where
+    executaCuidados [] estoqueAtual = Just estoqueAtual
+    executaCuidados (Comprar medicamento quantidade : restoCuidados) estoqueAtual =
+        executaCuidados restoCuidados (atualizarEstoqueAdicionar medicamento quantidade estoqueAtual)
+    executaCuidados (Medicar medicamento : restoCuidados) estoqueAtual =
+        case atualizarEstoqueRemover medicamento estoqueAtual of
+            Nothing -> Nothing
+            Just novoEstoque -> executaCuidados restoCuidados novoEstoque
+
+    atualizarEstoqueAdicionar medicamento quantidade [] = [(medicamento, quantidade)]
+    atualizarEstoqueAdicionar medicamento quantidade ((m, q) : estoqueRestante)
+        | m == medicamento = (m, q + quantidade) : estoqueRestante
+        | otherwise = (m, q) : atualizarEstoqueAdicionar medicamento quantidade estoqueRestante
+
+    atualizarEstoqueRemover _ [] = Nothing
+    atualizarEstoqueRemover medicamento ((m, q) : estoqueRestante)
+        | m == medicamento && q > 0 = Just ((m, q - 1) : estoqueRestante)
+        | m == medicamento = Nothing
+        | otherwise = case atualizarEstoqueRemover medicamento estoqueRestante of
+            Nothing -> Nothing
+            Just novoEstoque -> Just ((m, q) : novoEstoque)
+
 
 {-
 QUESTÃO 10 VALOR: 1,0 ponto
@@ -249,8 +309,10 @@ juntamente com ministrar medicamento.
 
 -}
 
-satisfaz :: Plantao -> PlanoMedicamento -> EstoqueMedicamentos -> Bool
+satisfaz :: Plantao -> EstoqueMedicamentos -> PlanoMedicamento -> Bool
 satisfaz = undefined
+
+
 
 {-
 
